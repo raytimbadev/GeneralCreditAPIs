@@ -1,0 +1,7 @@
+# Django 5.2 LTS: suporta Python 3.10 (Ubuntu 22.04). Suporte ate Abr 2028.
+Django>=5.2,<6.0
+djangorestframework>=3.16,<4.0
+gunicorn>=23.0,<24.0
+
+# So para correr os testes (bci/tests.py valida o openapi.yaml).
+PyYAML>=6.0,<7.0
