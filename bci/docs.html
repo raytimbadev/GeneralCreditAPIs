@@ -1,0 +1,1614 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API Capital Decrescente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --ground: #f2f5f4;
+    --surface: #ffffff;
+    --surface-sunk: #eaefee;
+    --ink: #141e1c;
+    --muted: #5a6a67;
+    --faint: #889895;
+    --line: #d5dedc;
+    --line-soft: #e4ebe9;
+    --accent: #0e6b61;
+    --accent-soft: #d9eae7;
+    --post: #8c530c;
+    --post-soft: #f4e7d4;
+    --stop: #9c3a2c;
+    --stop-soft: #f6e2de;
+
+    --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+    --step--1: 0.8125rem;
+    --step-0: 0.9375rem;
+    --step-1: 1.0625rem;
+    --step-2: 1.375rem;
+    --step-3: 1.875rem;
+    --step-4: 2.625rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101514;
+      --surface: #171f1e;
+      --surface-sunk: #131a19;
+      --ink: #e4ebe9;
+      --muted: #9aa9a6;
+      --faint: #6d7d7a;
+      --line: #283331;
+      --line-soft: #212b2a;
+      --accent: #48beae;
+      --accent-soft: #14312e;
+      --post: #d99b4a;
+      --post-soft: #302415;
+      --stop: #e08878;
+      --stop-soft: #331c18;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #101514;
+    --surface: #171f1e;
+    --surface-sunk: #131a19;
+    --ink: #e4ebe9;
+    --muted: #9aa9a6;
+    --faint: #6d7d7a;
+    --line: #283331;
+    --line-soft: #212b2a;
+    --accent: #48beae;
+    --accent-soft: #14312e;
+    --post: #d99b4a;
+    --post-soft: #302415;
+    --stop: #e08878;
+    --stop-soft: #331c18;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step-0);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible,
+  summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  code, kbd { font-family: var(--mono); font-size: 0.92em; }
+
+  /* ---------- shell ---------- */
+
+  .shell {
+    max-width: 1180px;
+    margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: 0 88px;
+    display: grid;
+    grid-template-columns: 196px minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    grid-column: 1 / -1;
+    border-bottom: 1px solid var(--line);
+    padding-block: 56px 36px;
+    display: grid;
+    gap: 22px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .masthead h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: var(--step-4);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+    margin: 0;
+    max-width: 18ch;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--muted);
+    font-size: var(--step-1);
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    color: var(--muted);
+    margin: 0;
+  }
+  .facts div { display: flex; gap: 8px; }
+  .facts dt { color: var(--faint); }
+  .facts dd { margin: 0; color: var(--ink); }
+
+  /* ---------- rail ---------- */
+
+  .rail {
+    position: sticky;
+    top: 24px;
+    display: grid;
+    gap: 4px;
+    padding-top: 44px;
+    font-size: var(--step--1);
+  }
+
+  .rail-head {
+    font-family: var(--mono);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--faint);
+    padding-bottom: 6px;
+  }
+
+  .rail a {
+    text-decoration: none;
+    color: var(--muted);
+    padding: 5px 0 5px 11px;
+    border-left: 2px solid var(--line);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .rail a:hover { color: var(--ink); border-left-color: var(--accent); }
+  .rail a .mono { font-family: var(--mono); color: var(--faint); }
+
+  /* ---------- sections ---------- */
+
+  main { display: grid; gap: 68px; padding-top: 44px; min-width: 0; }
+
+  section { display: grid; gap: 20px; scroll-margin-top: 24px; min-width: 0; }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: var(--step-3);
+    letter-spacing: -0.012em;
+    line-height: 1.15;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: var(--step-0);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  p { margin: 0; max-width: 66ch; }
+  .note { color: var(--muted); }
+
+  /* ---------- endpoint header ---------- */
+
+  .endpoint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+  }
+  .endpoint.is-post { border-left-color: var(--post); }
+
+  .verb {
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: var(--step--1);
+    letter-spacing: 0.06em;
+    padding: 3px 9px;
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .endpoint.is-post .verb { background: var(--post-soft); color: var(--post); }
+
+  .path {
+    font-family: var(--mono);
+    font-size: var(--step-1);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+  .path .dim { color: var(--faint); }
+
+  /* ---------- tables ---------- */
+
+  .scroller { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+
+  table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+
+  th, td {
+    text-align: left;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  thead th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 0.78rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-sunk);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  td.field { font-family: var(--mono); color: var(--ink); white-space: nowrap; }
+  td.type { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+  td.req { white-space: nowrap; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  td.req.yes { color: var(--ink); font-weight: 600; }
+  td.req.no { color: var(--faint); }
+
+  tr.group td {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-sunk);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  tr.group:first-child td { border-top: 0; }
+  tr.group td code { font-size: 1em; text-transform: none; letter-spacing: 0; }
+
+  .own {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 1px 6px;
+    margin-left: 6px;
+    white-space: nowrap;
+  }
+
+  /* tariff grid */
+  .grid-table { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .grid-table td { text-align: right; padding: 7px 14px; }
+  .grid-table td:first-child,
+  .grid-table th:first-child { text-align: left; }
+  .grid-table thead th { text-align: right; }
+  .grid-table thead th:first-child { text-align: left; }
+  .grid-table .age { color: var(--muted); }
+  .grid-table .nil { color: var(--stop); background: var(--stop-soft); font-style: normal; }
+
+  /* ---------- code ---------- */
+
+  pre {
+    margin: 0;
+    padding: 16px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: var(--step--1);
+    line-height: 1.65;
+    tab-size: 2;
+  }
+  pre .k { color: var(--accent); }
+  pre .s { color: var(--post); }
+  pre .c { color: var(--faint); }
+
+  .pair { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .pair > figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+  figcaption {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ---------- calculation trace ---------- */
+
+  .trace {
+    display: grid;
+    gap: 0;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    font-variant-numeric: tabular-nums;
+  }
+  .trace-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1.1fr) minmax(0, 1.6fr) minmax(96px, auto);
+    gap: 8px 20px;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: baseline;
+  }
+  .trace-row:last-child { border-bottom: 0; }
+  .trace-row.is-total { background: var(--surface-sunk); }
+  .trace-row.is-aside { color: var(--muted); }
+  .trace-label { font-weight: 500; }
+  .trace-row.is-total .trace-label { font-weight: 600; }
+  .trace-expr { font-family: var(--mono); font-size: var(--step--1); color: var(--muted); overflow-wrap: anywhere; }
+  .trace-value { font-family: var(--mono); text-align: right; white-space: nowrap; }
+
+  /* ---------- status rows ---------- */
+
+  .statuses { display: grid; gap: 10px; }
+  .status {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 18px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    align-items: start;
+  }
+  .status-code { font-family: var(--mono); font-weight: 600; }
+  .status.ok .status-code { color: var(--accent); }
+  .status.bad .status-code { color: var(--post); }
+  .status.no .status-code { color: var(--stop); }
+  .status-body { display: grid; gap: 6px; min-width: 0; }
+  .status-body p { max-width: 58ch; }
+  .status-body code { color: var(--muted); }
+
+  /* ---------- callout ---------- */
+
+  .callout {
+    border-left: 3px solid var(--stop);
+    background: var(--stop-soft);
+    padding: 13px 16px;
+    display: grid;
+    gap: 5px;
+  }
+  .callout strong { font-weight: 600; }
+  .callout p { max-width: 64ch; }
+
+  footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    margin-top: 12px;
+    padding-top: 22px;
+    color: var(--faint);
+    font-size: var(--step--1);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+  }
+  footer code { color: var(--muted); }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .rail {
+      position: static;
+      padding-top: 32px;
+      grid-auto-flow: column;
+      grid-auto-columns: max-content;
+      overflow-x: auto;
+      gap: 0 18px;
+      align-items: center;
+    }
+    .rail-head { display: none; }
+    .rail a { border-left: 0; border-bottom: 2px solid var(--line); padding: 4px 0; white-space: nowrap; }
+    .rail a:hover { border-bottom-color: var(--accent); }
+    main { padding-top: 30px; gap: 54px; }
+    .masthead { padding-block: 40px 28px; }
+    .trace-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .trace-expr { grid-column: 1 / -1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="masthead">
+    <p class="eyebrow">EMOSE · Seguro de vida · Crédito ao consumo</p>
+    <h1>API Capital Decrescente</h1>
+    <p class="lede">
+      Três endpoints sobre a tarifa de Capital Decrescente (Consumo) do BCI: simular
+      o prémio de um empréstimo, ler a tabela de taxas, e registar uma venda já
+      fechada ao balcão. Os dois primeiros calculam e devolvem, sem gravar; o
+      registo offline é um stub que grava e responde sempre aprovado.
+    </p>
+    <dl class="facts">
+      <div><dt>Base</dt><dd>/api/bci</dd></div>
+      <div><dt>Auth</dt><dd>Token (DRF)</dd></div>
+      <div><dt>Formato</dt><dd>JSON</dd></div>
+      <div><dt>Versão</dt><dd>1.0.0</dd></div>
+      <div><dt>Spec</dt><dd><a href="openapi.yaml">openapi.yaml</a></dd></div>
+    </dl>
+  </header>
+
+  <nav class="rail" aria-label="Secções">
+    <span class="rail-head">Referência</span>
+    <a href="#auth">Autenticação</a>
+    <a href="#quotation"><span class="mono">POST</span> quotation</a>
+    <a href="#tarif"><span class="mono">GET</span> tarif</a>
+    <a href="#offline"><span class="mono">POST</span> simulate-offline</a>
+    <a href="#calculo">Cálculo</a>
+    <a href="#erros">Erros</a>
+  </nav>
+
+  <main>
+
+    <!-- ============ AUTENTICAÇÃO ============ -->
+    <section id="auth">
+      <h2>Autenticação</h2>
+      <p>
+        Todos os pedidos exigem um token do Django REST Framework no header
+        <code>Authorization</code>, com o prefixo literal <code>Token</code>.
+        Sem ele, ambos os endpoints devolvem <strong>401</strong>.
+      </p>
+      <pre><span class="c">Authorization:</span> Token c183b8795ebcb774bdc2491d28286bdcb3f4bec1</pre>
+      <p class="note">
+        Os tokens vivem na tabela <code>authtoken_token</code> da base de dados — um por
+        utilizador. Emitir com <code>python manage.py drf_create_token &lt;username&gt;</code>.
+      </p>
+      <div class="callout">
+        <strong>As rotas não têm barra final.</strong>
+        <p>
+          <code>/processes/quotation/</code> e <code>/processes/tarif/</code> devolvem 404.
+          Escrever sem a barra. <code>/processes/simulate-offline/</code> é a excepção:
+          responde das duas maneiras.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ QUOTATION ============ -->
+    <section id="quotation">
+      <h2>Simular um prémio</h2>
+
+      <div class="endpoint is-post">
+        <span class="verb">POST</span>
+        <span class="path"><span class="dim">/api/bci</span>/processes/quotation</span>
+      </div>
+
+      <p>
+        Calcula o prémio a partir do montante, do perfil do mutuário, da data de
+        nascimento e do prazo. A idade é a do <strong>aniversário mais próximo</strong> à data
+        do pedido — a mesma <code>data_nascimento</code> pode cair num escalão diferente
+        consoante o dia em que se simula.
+      </p>
+
+      <h3>Corpo do pedido</h3>
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>Campo</th><th>Tipo</th><th>Obrig.</th><th>Regra</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="field">tipo_mutuario</td>
+              <td class="type">string</td>
+              <td class="req yes">sim</td>
+              <td><code>TRABALHADORES</code>, <code>MUTUARIOS</code> ou <code>MILITARES</code>. Normalizado antes de validar: minúsculas e acentos passam — <code>Mutuários</code> resolve para <code>MUTUARIOS</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">montante_emprestimo</td>
+              <td class="type">decimal</td>
+              <td class="req yes">sim</td>
+              <td>Capital em MZN. Maior que zero, até 16 dígitos e 2 casas decimais.</td>
+            </tr>
+            <tr>
+              <td class="field">data_nascimento</td>
+              <td class="type">string</td>
+              <td class="req yes">sim</td>
+              <td>Só <code>YYYY-MM-DD</code>. Tem de ser no passado, e a idade resultante cair entre 18 e 70.</td>
+            </tr>
+            <tr>
+              <td class="field">prazo_emprestimo</td>
+              <td class="type">integer</td>
+              <td class="req yes">sim</td>
+              <td>Duração em anos, de 1 a 7.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Campos não declarados são ignorados, não rejeitados. Clientes que ainda enviem
+        <code>id_bci</code> — removido do contrato — continuam a ser servidos.
+      </p>
+
+      <h3>Exemplo</h3>
+      <div class="pair">
+        <figure>
+          <figcaption>Pedido</figcaption>
+<pre>curl -X POST <span class="s">https://emose-serviops.com/api/bci/processes/quotation</span> \
+  -H <span class="s">"Authorization: Token &lt;token&gt;"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  -d <span class="s">'{
+    "tipo_mutuario": "TRABALHADORES",
+    "montante_emprestimo": 1000000,
+    "data_nascimento": "1996-01-01",
+    "prazo_emprestimo": 5
+  }'</span></pre>
+        </figure>
+        <figure>
+          <figcaption>Resposta 200</figcaption>
+<pre>{
+  <span class="k">"montante_emprestimo"</span>: 1000000.0,
+  <span class="k">"premio_total"</span>:        11843.99,
+  <span class="k">"premio_simples"</span>:      11555.11,
+  <span class="k">"sobre_taxa"</span>:            173.33,
+  <span class="k">"selo"</span>:                  115.55,
+  <span class="k">"comissao_bci"</span>:         2426.57,
+  <span class="k">"taxa"</span>:                11.84399
+}</pre>
+        </figure>
+      </div>
+
+      <h3>Campos da resposta</h3>
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>Campo</th><th>O que é</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="field">montante_emprestimo</td><td>Eco do capital recebido no pedido.</td></tr>
+            <tr><td class="field">premio_total</td><td>O que o mutuário paga. Igual a <code>premio_simples + sobre_taxa + selo</code>.</td></tr>
+            <tr><td class="field">premio_simples</td><td>Prémio de risco, antes de encargos.</td></tr>
+            <tr><td class="field">sobre_taxa</td><td>1,5 % do prémio simples.</td></tr>
+            <tr><td class="field">selo</td><td>Imposto de selo, 1 % do prémio simples.</td></tr>
+            <tr><td class="field">comissao_bci</td><td>21 % do prémio simples. Remuneração do banco — <strong>não</strong> entra no prémio total.</td></tr>
+            <tr><td class="field">taxa</td><td>Taxa da tarifa em permilagem (‰) usada no cálculo, para se poder conferir o resultado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ TARIF ============ -->
+    <section id="tarif">
+      <h2>Ler a tabela de tarifas</h2>
+
+      <div class="endpoint">
+        <span class="verb">GET</span>
+        <span class="path"><span class="dim">/api/bci</span>/processes/tarif</span>
+      </div>
+
+      <p>
+        Devolve as taxas em permilagem (‰) por idade e prazo. Serve para mostrar a
+        grelha ao utilizador, ou para replicar o cálculo do lado do cliente.
+      </p>
+
+      <h3>Query parameter</h3>
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>Parâmetro</th><th>Tipo</th><th>Obrig.</th><th>Regra</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="field">tipo_mutuario</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Perfil a devolver. Omitido, vêm os três — 159 linhas em vez de 53.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Exemplo</h3>
+      <div class="pair">
+        <figure>
+          <figcaption>Pedido</figcaption>
+<pre>curl <span class="s">"https://emose-serviops.com/api/bci/processes/tarif?tipo_mutuario=TRABALHADORES"</span> \
+  -H <span class="s">"Authorization: Token &lt;token&gt;"</span></pre>
+        </figure>
+        <figure>
+          <figcaption>Resposta 200 (recortada)</figcaption>
+<pre>{
+  <span class="k">"tipos_mutuario"</span>: [<span class="s">"TRABALHADORES"</span>],
+  <span class="k">"idade_min"</span>: 18,
+  <span class="k">"idade_max"</span>: 70,
+  <span class="k">"prazos"</span>: [1, 2, 3, 4, 5, 6, 7],
+  <span class="k">"tarifas"</span>: [
+    {
+      <span class="k">"tipo_mutuario"</span>: <span class="s">"TRABALHADORES"</span>,
+      <span class="k">"idade"</span>: 18,
+      <span class="k">"taxas"</span>: {
+        <span class="k">"1"</span>: 3.685402,  <span class="k">"2"</span>: 7.114062,
+        <span class="k">"3"</span>: 10.259172, <span class="k">"4"</span>: 13.077362,
+        <span class="k">"5"</span>: 15.622632, <span class="k">"6"</span>: 17.933739,
+        <span class="k">"7"</span>: 20.045566
+      }
+    }
+  ]
+}</pre>
+        </figure>
+      </div>
+
+      <h3>A grelha, e onde tem buracos</h3>
+      <p>
+        Uma linha por perfil × idade. As chaves de <code>taxas</code> são o prazo em anos
+        <em>como string</em> — <code>"1"</code> a <code>"7"</code>. As combinações não seguráveis vêm a
+        <code>null</code> em vez de omitidas, para a grelha ficar rectangular e poder ser
+        renderizada como tabela sem tratamento especial.
+      </p>
+      <div class="scroller">
+        <table class="grid-table">
+          <thead>
+            <tr>
+              <th scope="col">Idade</th>
+              <th scope="col">1 ano</th><th scope="col">2</th><th scope="col">3</th>
+              <th scope="col">4</th><th scope="col">5</th><th scope="col">6</th><th scope="col">7</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="age">18</td><td>3.685402</td><td>7.114062</td><td>10.259172</td><td>13.077362</td><td>15.622632</td><td>17.933739</td><td>20.045566</td></tr>
+            <tr><td class="age">31</td><td>2.491869</td><td>4.817021</td><td>7.142001</td><td>9.477039</td><td>11.84399</td><td>14.254771</td><td>16.728125</td></tr>
+            <tr><td class="age">50</td><td>7.777895</td><td>15.653092</td><td>24.282513</td><td>33.755418</td><td>44.166394</td><td>55.622206</td><td>68.246299</td></tr>
+            <tr><td class="age">67</td><td>29.777084</td><td>59.806923</td><td>93.124529</td><td>130.097452</td><td>171.124289</td><td>216.64395</td><td class="nil">null</td></tr>
+            <tr><td class="age">70</td><td>38.446903</td><td>77.056143</td><td>119.742956</td><td class="nil">null</td><td class="nil">null</td><td class="nil">null</td><td class="nil">null</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Perfil <code>TRABALHADORES</code>, cinco das 53 idades. A taxa desce até aos 30 anos
+        e sobe daí em diante; aos 70, só prazos até 3 anos são seguráveis. Pedir uma
+        célula <code>null</code> ao <code>quotation</code> devolve 400, não 200 com zero.
+      </p>
+    </section>
+
+    <!-- ============ SIMULATE-OFFLINE ============ -->
+    <section id="offline">
+      <h2>Registar uma venda fechada ao balcão</h2>
+
+      <div class="endpoint is-post">
+        <span class="verb">POST</span>
+        <span class="path"><span class="dim">/api/bci</span>/processes/simulate-offline/</span>
+      </div>
+
+      <div class="callout">
+        <strong>Isto é um stub.</strong>
+        <p>
+          Não valida o risco, não calcula prémio e não decide nada. Guarda o pedido
+          e responde sempre aprovado. Quem emite a apólice é o
+          <strong>RPA INSIS</strong>, a jusante.
+        </p>
+      </div>
+
+      <p>
+        Serve para o canal poder integrar já contra um contrato estável. É o único
+        endpoint que <strong>grava</strong> — tudo o que for enviado fica registado,
+        para haver rasto quando a lógica real entrar.
+      </p>
+
+      <h3>Corpo do pedido</h3>
+      <p>
+        Qualquer objecto JSON serve, incluindo <code>{}</code>. <strong>Não há campos
+        obrigatórios</strong> e nenhum é validado: <code>prazo_emprestimo: 12</code>
+        passa, apesar de a tarifa só ir até 7, porque não há cálculo nenhum.
+      </p>
+      <p>
+        Abaixo, os <strong>97 campos</strong> que o canal envia numa venda ao balcão.
+        Cinco deles ficam em <strong>colunas próprias</strong> —
+        <code>id_bci</code>, <code>transaction_ref</code>, <code>premio_pago</code>,
+        <code>comissao</code> e <code>certificado_apolice</code>. Todos os outros ficam
+        no JSON <code>dados</code> do registo, tal como vieram.
+      </p>
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>Campo</th><th>Tipo</th><th>Obrig.</th><th>Para que serve</th></tr>
+          </thead>
+          <tbody>
+            <tr class="group"><td colspan="4">Identificação do processo</td></tr>
+            <tr>
+              <td class="field">id_bci</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Identificador do processo no BCI. Único campo que influencia a resposta — é devolvido tal e qual. Guardado em coluna própria, truncado a 64 caracteres. <span class="own">coluna própria</span></td>
+            </tr>
+            <tr>
+              <td class="field">transaction_ref</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Referência da transacção no sistema de origem. Coluna própria e chave de idempotência: repetir a mesma referência não cria um segundo registo. <span class="own">coluna própria</span></td>
+            </tr>
+            <tr class="group"><td colspan="4">Empréstimo (eco da cotação)</td></tr>
+            <tr>
+              <td class="field">tipo_mutuario</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Perfil usado na cotação. Guardado tal como vem — aqui não é normalizado nem validado contra a lista.</td>
+            </tr>
+            <tr>
+              <td class="field">montante_emprestimo</td>
+              <td class="type">number</td>
+              <td class="req no">não</td>
+              <td>Capital do empréstimo.</td>
+            </tr>
+            <tr>
+              <td class="field">data_nascimento</td>
+              <td class="type">string (date)</td>
+              <td class="req no">não</td>
+              <td><code>YYYY-MM-DD</code>. Não é validada nem usada para calcular idade.</td>
+            </tr>
+            <tr>
+              <td class="field">prazo_emprestimo</td>
+              <td class="type">integer</td>
+              <td class="req no">não</td>
+              <td>Prazo em anos. Valores fora de 1–7 passam, porque não há cálculo.</td>
+            </tr>
+            <tr>
+              <td class="field">agravamento</td>
+              <td class="type">number</td>
+              <td class="req no">não</td>
+              <td>Agravamento aplicado na cotação (<code>0.10</code> = 10 %).</td>
+            </tr>
+            <tr class="group"><td colspan="4">Cliente</td></tr>
+            <tr>
+              <td class="field">nuit</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>NUIT do cliente.</td>
+            </tr>
+            <tr>
+              <td class="field">nome_cliente</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Nome próprio.</td>
+            </tr>
+            <tr>
+              <td class="field">apelido</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Apelido.</td>
+            </tr>
+            <tr>
+              <td class="field">tipo_entidade</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Natureza do tomador; <code>person</code> para pessoa singular.</td>
+            </tr>
+            <tr>
+              <td class="field">sexo</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>M</code> ou <code>F</code>. Determina se o bloco <code>sf_*</code> vem preenchido.</td>
+            </tr>
+            <tr>
+              <td class="field">pais</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>País de residência.</td>
+            </tr>
+            <tr>
+              <td class="field">nacionalidade</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Código ISO do país, <code>MZ</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">lingua</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Língua do cliente, <code>PORTUGUESE</code>.</td>
+            </tr>
+            <tr class="group"><td colspan="4">Morada</td></tr>
+            <tr>
+              <td class="field">tipo_morada</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>Casa</code>, <code>Trabalho</code>, etc.</td>
+            </tr>
+            <tr>
+              <td class="field">provincia</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Província.</td>
+            </tr>
+            <tr>
+              <td class="field">regiao</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Distrito ou distrito municipal.</td>
+            </tr>
+            <tr>
+              <td class="field">bairro</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Bairro.</td>
+            </tr>
+            <tr>
+              <td class="field">morada</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Avenida ou rua e número.</td>
+            </tr>
+            <tr class="group"><td colspan="4">Contacto</td></tr>
+            <tr>
+              <td class="field">tipo_contacto</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>Mobile</code>, <code>Email</code>, etc.</td>
+            </tr>
+            <tr>
+              <td class="field">numero_contacto</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Número ou endereço, conforme o tipo.</td>
+            </tr>
+            <tr>
+              <td class="field">lingua_contacto</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Língua preferida nas comunicações.</td>
+            </tr>
+            <tr class="group"><td colspan="4">Dados bancários</td></tr>
+            <tr>
+              <td class="field">codigo_banco</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Código do banco; <code>0008</code> para o BCI.</td>
+            </tr>
+            <tr>
+              <td class="field">numero_conta</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Número da conta de débito.</td>
+            </tr>
+            <tr>
+              <td class="field">tipo_moeda</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>MZN</code>.</td>
+            </tr>
+            <tr class="group"><td colspan="4">Apólice</td></tr>
+            <tr>
+              <td class="field">tipo_seguro</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>vida</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">canal_venda</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>balcao</code> para a venda fechada ao balcão.</td>
+            </tr>
+            <tr>
+              <td class="field">data_emissao</td>
+              <td class="type">string (date)</td>
+              <td class="req no">não</td>
+              <td>Data de emissão do certificado.</td>
+            </tr>
+            <tr>
+              <td class="field">data_apolice</td>
+              <td class="type">string (date)</td>
+              <td class="req no">não</td>
+              <td>Data da apólice.</td>
+            </tr>
+            <tr>
+              <td class="field">data_inicio_seguro</td>
+              <td class="type">string (date)</td>
+              <td class="req no">não</td>
+              <td>Início da cobertura.</td>
+            </tr>
+            <tr>
+              <td class="field">papel</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Papel do cliente no contrato, <code>tomador</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">quota</td>
+              <td class="type">number</td>
+              <td class="req no">não</td>
+              <td>Percentagem do capital atribuída a este segurado.</td>
+            </tr>
+            <tr>
+              <td class="field">estado</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Estado do contrato na origem, <code>activo</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">designacao</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Designação comercial do produto. Texto livre do canal.</td>
+            </tr>
+            <tr>
+              <td class="field">lingua_apolice</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Língua em que a apólice é emitida.</td>
+            </tr>
+            <tr>
+              <td class="field">tipo_pagamento</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>debito_conta</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">num_prestacoes</td>
+              <td class="type">integer</td>
+              <td class="req no">não</td>
+              <td>Número de prestações do prémio.</td>
+            </tr>
+            <tr>
+              <td class="field">man_id</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Identificador do mandato no sistema de origem.</td>
+            </tr>
+            <tr>
+              <td class="field">tipo_segurado</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td><code>principal</code> ou segurado secundário.</td>
+            </tr>
+            <tr>
+              <td class="field">capital_seguro</td>
+              <td class="type">number</td>
+              <td class="req no">não</td>
+              <td>Capital seguro. Em regra igual a <code>montante_emprestimo</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">premio_pago</td>
+              <td class="type">decimal</td>
+              <td class="req no">não</td>
+              <td>Prémio cobrado ao cliente. Coluna própria, guardado sem conferência — valor não numérico fica a <code>null</code>, não dá erro. <span class="own">coluna própria</span></td>
+            </tr>
+            <tr>
+              <td class="field">comissao</td>
+              <td class="type">decimal</td>
+              <td class="req no">não</td>
+              <td>Comissão praticada. Coluna própria, mesmas regras. <span class="own">coluna própria</span></td>
+            </tr>
+            <tr>
+              <td class="field">certificado_apolice</td>
+              <td class="type">string (base64)</td>
+              <td class="req no">não</td>
+              <td>Certificado de apólice em base64. Coluna própria — é retirado de <code>dados</code> e não é descodificado nem verificado. <span class="own">coluna própria</span></td>
+            </tr>
+            <tr class="group"><td colspan="4">Questionário clínico — hábitos</td></tr>
+            <tr>
+              <td class="field">altura_cm</td>
+              <td class="type">integer</td>
+              <td class="req no">não</td>
+              <td>Altura em centímetros.</td>
+            </tr>
+            <tr>
+              <td class="field">peso_kg</td>
+              <td class="type">number</td>
+              <td class="req no">não</td>
+              <td>Peso em quilogramas.</td>
+            </tr>
+            <tr>
+              <td class="field">fuma</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">fuma_anos_cigarros</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Há quantos anos e quantos cigarros por dia. Só vem preenchido se <code>fuma</code> for <code>Sim</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">bebe_bebidas_alcoolicas</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">bebe_frequencia</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Frequência e quantidade. Condicional ao campo anterior.</td>
+            </tr>
+            <tr>
+              <td class="field">pratica_desporto</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">tipo_desporto</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Que desporto e com que regularidade. Condicional.</td>
+            </tr>
+            <tr>
+              <td class="field">toma_drogas_medicamentos</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">tipo_tempo_medicamentos</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Quais e há quanto tempo. Condicional.</td>
+            </tr>
+            <tr class="group"><td colspan="4">Antecedentes familiares (<code>af_*</code>)</td></tr>
+            <tr>
+              <td class="field">af_diabetes</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_colesterol_alto</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_doencas_cardiacas</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_avc</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Acidente vascular cerebral na família. Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_hipertensao</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_doenca_neurologica_mental</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_cancro</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_retinite_pigmentosa</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_porfiria</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_hemofilia</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_outra_doenca_hereditaria</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">af_morte_familiar_menos_65</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Morte de familiar directo antes dos 65 anos. Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr class="group"><td colspan="4">Antecedentes pessoais (<code>ap_*</code>)</td></tr>
+            <tr>
+              <td class="field">ap_tratamento_cirurgico</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_tratamento_cirurgico_especifique</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Qual. Condicional ao campo anterior.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_diagnostico_5anos</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Diagnóstico nos últimos 5 anos. Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_diagnostico_5anos_descreva</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Qual. Condicional.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_febre_reumatica_coracao</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_pressao_arterial_avc</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_doenca_pulmonar</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_sistema_digestivo</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_condicoes_rins</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_ansiedade_depressao</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_diabetes_glandular</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_articulacoes_coluna</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_tumores</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_doencas_sangue</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_hiv</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_hiv_indique</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Detalhe. Condicional a <code>ap_hiv</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_doenca_sexual</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_deficiencia</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_circunstancias_risco</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Profissão ou actividade de risco. Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_outra_doenca</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">ap_outra_doenca_mencione</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Qual. Condicional.</td>
+            </tr>
+            <tr class="group"><td colspan="4">Saúde feminina (<code>sf_*</code>)</td></tr>
+            <tr>
+              <td class="field">sf_esta_gravida</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_gravida_meses</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>De quantos meses. Condicional.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_esteve_gravida</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_esteve_gravida_detalhes</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Detalhes. Condicional.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_tipo_partos</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Tipo de partos.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_numero_partos_anos</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Número de partos e em que anos.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_aborto_prematuro</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_aborto_meses</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Com quantos meses. Condicional.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_doenca_ginecologica</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Resposta do questionário: <code>Sim</code> / <code>Nao</code>.</td>
+            </tr>
+            <tr>
+              <td class="field">sf_doenca_ginecologica_mencione</td>
+              <td class="type">string</td>
+              <td class="req no">não</td>
+              <td>Qual. Condicional.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Nenhum campo é obrigatório porque nada é calculado: o que faltar fica de fora
+        do registo, e o que vier a mais é guardado na mesma. As respostas do
+        questionário chegam como texto (<code>Sim</code> / <code>Nao</code>, com e sem
+        maiúsculas) e não são normalizadas. Os campos <code>sf_*</code> só vêm
+        preenchidos quando <code>sexo</code> é <code>F</code>.
+      </p>
+
+      <h3>Exemplo</h3>
+      <p>Pedido completo, tal como o canal o envia:</p>
+<pre>curl -X POST <span class="s">https://emose-serviops.com/api/bci/processes/simulate-offline/</span> \
+  -H <span class="s">"Authorization: Token &lt;token&gt;"</span> \
+  -H <span class="s">"Content-Type: application/json"</span> \
+  --data-binary <span class="s">@venda.json</span></pre>
+
+      <div class="pair">
+        <figure>
+          <figcaption>venda.json</figcaption>
+<pre>{
+  <span class="k">"id_bci"</span>: <span class="s">"EMOSETESTE0063"</span>,
+  <span class="k">"transaction_ref"</span>: <span class="s">"TRX-2026-000841"</span>,
+  <span class="k">"tipo_mutuario"</span>: <span class="s">"trabalhador"</span>,
+  <span class="k">"montante_emprestimo"</span>: 1000000.00,
+  <span class="k">"data_nascimento"</span>: <span class="s">"1995-01-21"</span>,
+  <span class="k">"prazo_emprestimo"</span>: 12,
+  <span class="k">"agravamento"</span>: 0.00,
+  <span class="k">"nuit"</span>: <span class="s">"125454958"</span>,
+  <span class="k">"nome_cliente"</span>: <span class="s">"Raimundo L. Timba"</span>,
+  <span class="k">"apelido"</span>: <span class="s">"Timba"</span>,
+  <span class="k">"tipo_entidade"</span>: <span class="s">"person"</span>,
+  <span class="k">"sexo"</span>: <span class="s">"M"</span>,
+  <span class="k">"pais"</span>: <span class="s">"Moçambique"</span>,
+  <span class="k">"nacionalidade"</span>: <span class="s">"MZ"</span>,
+  <span class="k">"lingua"</span>: <span class="s">"PORTUGUESE"</span>,
+  <span class="k">"tipo_morada"</span>: <span class="s">"Casa"</span>,
+  <span class="k">"provincia"</span>: <span class="s">"Maputo Cidade"</span>,
+  <span class="k">"regiao"</span>: <span class="s">"Distrito Municipal de KaMpfumo"</span>,
+  <span class="k">"bairro"</span>: <span class="s">"Polana Cimento A"</span>,
+  <span class="k">"morada"</span>: <span class="s">"Av. Julius Nyerere 123"</span>,
+  <span class="k">"tipo_contacto"</span>: <span class="s">"Mobile"</span>,
+  <span class="k">"numero_contacto"</span>: <span class="s">"847527898"</span>,
+  <span class="k">"lingua_contacto"</span>: <span class="s">"Portugues"</span>,
+  <span class="k">"codigo_banco"</span>: <span class="s">"0008"</span>,
+  <span class="k">"numero_conta"</span>: <span class="s">"123456789012"</span>,
+  <span class="k">"tipo_moeda"</span>: <span class="s">"MZN"</span>,
+  <span class="k">"tipo_seguro"</span>: <span class="s">"vida"</span>,
+  <span class="k">"canal_venda"</span>: <span class="s">"balcao"</span>,
+  <span class="k">"data_emissao"</span>: <span class="s">"2026-01-18"</span>,
+  <span class="k">"data_apolice"</span>: <span class="s">"2026-01-18"</span>,
+  <span class="k">"data_inicio_seguro"</span>: <span class="s">"2026-01-18"</span>,
+  <span class="k">"papel"</span>: <span class="s">"tomador"</span>,
+  <span class="k">"quota"</span>: 100.00,
+  <span class="k">"estado"</span>: <span class="s">"activo"</span>,
+  <span class="k">"designacao"</span>: <span class="s">"Seguro Vida Credito Consumo"</span>,
+  <span class="k">"lingua_apolice"</span>: <span class="s">"Portugues"</span>,
+  <span class="k">"tipo_pagamento"</span>: <span class="s">"debito_conta"</span>,
+  <span class="k">"num_prestacoes"</span>: 1,
+  <span class="k">"man_id"</span>: <span class="s">"6000035452"</span>,
+  <span class="k">"tipo_segurado"</span>: <span class="s">"principal"</span>,
+  <span class="k">"capital_seguro"</span>: 1000000.00,
+  <span class="k">"premio_pago"</span>: 11843.99,
+  <span class="k">"comissao"</span>: 2426.57,
+  <span class="k">"certificado_apolice"</span>: <span class="s">"JVBERi0xLjQKJeLjz9MK..."</span>,
+  <span class="k">"altura_cm"</span>: 175,
+  <span class="k">"peso_kg"</span>: 70.00,
+  <span class="k">"fuma"</span>: <span class="s">"Sim"</span>,
+  <span class="k">"fuma_anos_cigarros"</span>: <span class="s">"12 anos, 5 por dia"</span>,
+  <span class="k">"bebe_bebidas_alcoolicas"</span>: <span class="s">"Sim"</span>,
+  <span class="k">"bebe_frequencia"</span>: <span class="s">"Ao fim-de-semana"</span>,
+  <span class="k">"pratica_desporto"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"tipo_desporto"</span>: <span class="s">""</span>,
+  <span class="k">"toma_drogas_medicamentos"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"tipo_tempo_medicamentos"</span>: <span class="s">""</span>,
+  <span class="k">"af_diabetes"</span>: <span class="s">"Sim"</span>,
+  <span class="k">"af_colesterol_alto"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_doencas_cardiacas"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_avc"</span>: <span class="s">"Sim"</span>,
+  <span class="k">"af_hipertensao"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_doenca_neurologica_mental"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_cancro"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_retinite_pigmentosa"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_porfiria"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_hemofilia"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_outra_doenca_hereditaria"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"af_morte_familiar_menos_65"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_tratamento_cirurgico"</span>: <span class="s">"Sim"</span>,
+  <span class="k">"ap_tratamento_cirurgico_especifique"</span>: <span class="s">"Apendicectomia em 2019"</span>,
+  <span class="k">"ap_diagnostico_5anos"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_diagnostico_5anos_descreva"</span>: <span class="s">""</span>,
+  <span class="k">"ap_febre_reumatica_coracao"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_pressao_arterial_avc"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_doenca_pulmonar"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_sistema_digestivo"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_condicoes_rins"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_ansiedade_depressao"</span>: <span class="s">"Sim"</span>,
+  <span class="k">"ap_diabetes_glandular"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_articulacoes_coluna"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_tumores"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_doencas_sangue"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_hiv"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_hiv_indique"</span>: <span class="s">""</span>,
+  <span class="k">"ap_doenca_sexual"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_deficiencia"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_circunstancias_risco"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_outra_doenca"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"ap_outra_doenca_mencione"</span>: <span class="s">""</span>,
+  <span class="k">"sf_esta_gravida"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"sf_gravida_meses"</span>: <span class="s">""</span>,
+  <span class="k">"sf_esteve_gravida"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"sf_esteve_gravida_detalhes"</span>: <span class="s">""</span>,
+  <span class="k">"sf_tipo_partos"</span>: <span class="s">""</span>,
+  <span class="k">"sf_numero_partos_anos"</span>: <span class="s">""</span>,
+  <span class="k">"sf_aborto_prematuro"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"sf_aborto_meses"</span>: <span class="s">""</span>,
+  <span class="k">"sf_doenca_ginecologica"</span>: <span class="s">"Nao"</span>,
+  <span class="k">"sf_doenca_ginecologica_mencione"</span>: <span class="s">""</span>
+}</pre>
+        </figure>
+        <figure>
+          <figcaption>Resposta <span class="mono">200</span></figcaption>
+<pre>{
+  <span class="k">"message"</span>: <span class="s">"Cotação aprovada. RPA INSIS iniciado para emissão de apólice."</span>,
+  <span class="k">"id_bci"</span>: <span class="s">"EMOSETESTE0063"</span>,
+  <span class="k">"estado_processo"</span>: <span class="s">"aprovado"</span>
+}</pre>
+        </figure>
+      </div>
+      <h3>Campos da resposta</h3>
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>Campo</th><th>O que é</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="field">message</td><td>Texto fixo, sempre o mesmo.</td></tr>
+            <tr><td class="field">id_bci</td><td>O <code>id_bci</code> do pedido, devolvido tal e qual. Vazio se não vier.</td></tr>
+            <tr><td class="field">estado_processo</td><td>Sempre <code>aprovado</code>. Não há análise, logo não há outros estados.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">
+        Só o token é exigido — sem ele, <strong>401</strong>, como nos outros
+        endpoints. Fora isso não há respostas de erro: o pedido é sempre aceite.
+      </p>
+
+      <div class="callout">
+        <strong>Idempotente por <code>transaction_ref</code>.</strong>
+        <p>
+          Com a referência no pedido, repetir não cria um segundo registo — a
+          resposta é a mesma nos dois casos. Sem ela, cada pedido é um registo novo.
+        </p>
+      </div>
+
+      <p class="note">
+        Ao contrário de <code>quotation</code> e <code>tarif</code>, esta rota responde
+        <strong>com e sem</strong> barra final. Sem as duas formas, um POST sem barra
+        apanhava um 301 e há clientes que perdem o corpo do pedido a seguir a um
+        redireccionamento.
+      </p>
+    </section>
+
+    <!-- ============ CÁLCULO ============ -->
+    <section id="calculo">
+      <h2>Como o prémio é composto</h2>
+      <p>
+        A taxa da tarifa produz o prémio <strong>total</strong>, com os encargos já
+        incluídos. O prémio simples sai por divisão, não por multiplicação — é a
+        inversão que mais custa a apanhar ao reimplementar o cálculo do lado do cliente.
+      </p>
+
+      <div class="trace">
+        <div class="trace-row">
+          <span class="trace-label">Idade</span>
+          <span class="trace-expr">aniversário mais próximo de 1996-01-01, a 2026-09-14</span>
+          <span class="trace-value">31</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">Taxa</span>
+          <span class="trace-expr">TRABALHADORES · idade 31 · prazo 5</span>
+          <span class="trace-value">11,84399 ‰</span>
+        </div>
+        <div class="trace-row is-total">
+          <span class="trace-label">Prémio total</span>
+          <span class="trace-expr">1 000 000 × 11,84399 / 1000 × (1 + 0)</span>
+          <span class="trace-value">11 843,99</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">Prémio simples</span>
+          <span class="trace-expr">11 843,99 / 1,025</span>
+          <span class="trace-value">11 555,11</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">Sobretaxa</span>
+          <span class="trace-expr">11 555,11 × 1,5 %</span>
+          <span class="trace-value">173,33</span>
+        </div>
+        <div class="trace-row">
+          <span class="trace-label">Selo</span>
+          <span class="trace-expr">11 555,11 × 1 %</span>
+          <span class="trace-value">115,55</span>
+        </div>
+        <div class="trace-row is-total">
+          <span class="trace-label">Confere</span>
+          <span class="trace-expr">11 555,11 + 173,33 + 115,55</span>
+          <span class="trace-value">11 843,99</span>
+        </div>
+        <div class="trace-row is-aside">
+          <span class="trace-label">Comissão BCI</span>
+          <span class="trace-expr">11 555,11 × 21 % — fora do prémio total</span>
+          <span class="trace-value">2 426,57</span>
+        </div>
+      </div>
+
+      <p class="note">
+        O <strong>agravamento</strong> é fixo, configurado em
+        <code>settings.BCI_AGRAVAMENTO</code> (<code>0.10</code> = 10 %) — não é um parâmetro do
+        pedido. Multiplica o prémio total, logo atravessa toda a cadeia na mesma
+        proporção. O divisor 1,025 é exactamente 1 + 1,5 % + 1 %: sobretaxa e selo
+        são as duas únicas parcelas entre o simples e o total.
+      </p>
+    </section>
+
+    <!-- ============ ERROS ============ -->
+    <section id="erros">
+      <h2>Respostas de erro</h2>
+
+      <div class="statuses">
+        <div class="status ok">
+          <span class="status-code">200</span>
+          <div class="status-body"><p>Calculado. O corpo segue os campos da secção acima.</p></div>
+        </div>
+
+        <div class="status bad">
+          <span class="status-code">400</span>
+          <div class="status-body">
+            <p><strong>Validação.</strong> Um objecto com uma lista de mensagens por campo inválido.</p>
+<pre>{
+  <span class="k">"tipo_mutuario"</span>: [<span class="s">"Valor inválido. Use um de: TRABALHADORES, MUTUARIOS, MILITARES."</span>],
+  <span class="k">"montante_emprestimo"</span>: [<span class="s">"Um número válido é necessário."</span>],
+  <span class="k">"prazo_emprestimo"</span>: [<span class="s">"Certifique-se de que este valor seja inferior ou igual a 7."</span>]
+}</pre>
+            <p class="note">As mensagens genéricas do DRF seguem o <code>LANGUAGE_CODE</code>, que aqui é <code>pt</code>. Decidir pela chave do campo, não pelo texto.</p>
+          </div>
+        </div>
+
+        <div class="status bad">
+          <span class="status-code">400</span>
+          <div class="status-body">
+            <p><strong>Não segurável.</strong> A combinação idade × prazo não tem taxa na tarifa. Um objecto com <code>detail</code>, não por campo.</p>
+<pre>{ <span class="k">"detail"</span>: <span class="s">"Não segurável: idade 67 com prazo de 7 anos (TRABALHADORES)."</span> }</pre>
+          </div>
+        </div>
+
+        <div class="status no">
+          <span class="status-code">401</span>
+          <div class="status-body">
+            <p>Header <code>Authorization</code> ausente ou token inválido.</p>
+<pre>{ <span class="k">"detail"</span>: <span class="s">"As credenciais de autenticação não foram fornecidas."</span> }</pre>
+          </div>
+        </div>
+
+        <div class="status no">
+          <span class="status-code">405</span>
+          <div class="status-body">
+            <p>Método errado — um <code>GET</code> a <code>/processes/quotation</code>, que só aceita <code>POST</code>.</p>
+          </div>
+        </div>
+
+        <div class="status no">
+          <span class="status-code">404</span>
+          <div class="status-body">
+            <p>Rota inexistente. Quase sempre a barra final a mais, ou <code>/api/bci/</code> sozinho, que é prefixo e não endpoint.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>Fonte das regras: <code>Capital Decrescente Consumo Formulas.xlsx</code></span>
+    <span>Taxas: <code>Capital Decrescente Tarifa BCI.xlsx</code></span>
+    <span>Spec OpenAPI 3.0: <a href="openapi.yaml"><code>openapi.yaml</code></a></span>
+  </footer>
+
+</div>
+</body>
+</html>

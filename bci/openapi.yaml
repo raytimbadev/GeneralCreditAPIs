@@ -1,0 +1,862 @@
+openapi: 3.0.3
+
+info:
+  title: API de simulação — Capital Decrescente (Consumo) BCI
+  version: "1.0.0"
+  description: |
+    Simulação do prémio do seguro de vida associado a crédito ao consumo com
+    capital decrescente, e consulta da tabela de tarifas.
+
+    A app não persiste nada: cada pedido é calculado e devolvido.
+
+    ## Regras de cálculo
+
+    | Item | Regra |
+    |---|---|
+    | Idade | Idade no aniversário mais próximo, à data da simulação |
+    | Taxa (‰) | Tabela por perfil × idade (18–70) × prazo (1–7) |
+    | Prémio total | `montante × taxa / 1000 × (1 + agravamento)` |
+    | Prémio simples | `prémio total / 1,025` |
+    | Sobretaxa | 1,5 % do prémio simples |
+    | Selo | 1 % do prémio simples |
+    | Comissão BCI | 21 % do prémio simples |
+
+    A taxa da tarifa produz o prémio **total** (encargos já incluídos); o prémio
+    simples obtém-se por divisão por 1,025 (= 1 + 1,5 % + 1 %). Confirma-se
+    depois que `prémio total = prémio simples + sobretaxa + selo`.
+
+    O agravamento é fixo, configurado em `settings.BCI_AGRAVAMENTO`
+    (ex.: `0.10` = 10 %); não é um parâmetro do pedido.
+
+    Fonte das regras e das taxas: `Capital Decrescente Consumo Formulas.xlsx`
+    e `Capital Decrescente Tarifa BCI.xlsx`.
+
+servers:
+  - url: https://emose-serviops.com/api/bci
+    description: Produção
+  - url: http://127.0.0.1:8010/api/bci
+    description: Desenvolvimento local
+
+security:
+  - TokenAuth: []
+
+tags:
+  - name: Processes
+    description: Simulação e tarifa
+
+paths:
+  /processes/quotation:
+    post:
+      tags: [Processes]
+      operationId: simularProcesso
+      summary: Simula o prémio de um empréstimo
+      description: |
+        Calcula o prémio a partir do montante, do perfil do mutuário, da data de
+        nascimento e do prazo. Nada é gravado.
+
+        A idade é calculada à data do pedido, logo a mesma `data_nascimento`
+        pode dar valores diferentes em datas diferentes.
+
+        Atenção: a rota **não tem barra final**. `/processes/quotation/`
+        devolve 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimulacaoRequest"
+            examples:
+              trabalhador:
+                summary: Trabalhador, 1.000.000 MZN a 5 anos
+                value:
+                  tipo_mutuario: TRABALHADORES
+                  montante_emprestimo: 1000000
+                  data_nascimento: "1996-01-01"
+                  prazo_emprestimo: 5
+              acentos_e_minusculas:
+                summary: tipo_mutuario é normalizado
+                value:
+                  tipo_mutuario: Mutuários
+                  montante_emprestimo: 500000
+                  data_nascimento: "1985-07-20"
+                  prazo_emprestimo: 3
+      responses:
+        "200":
+          description: Simulação calculada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SimulacaoResponse"
+              example:
+                montante_emprestimo: 1000000.0
+                premio_total: 11843.99
+                premio_simples: 11555.11
+                sobre_taxa: 173.33
+                selo: 115.55
+                comissao_bci: 2426.57
+                taxa: 11.84399
+        "400":
+          description: |
+            Erro de validação (um objecto com uma lista de mensagens por campo),
+            ou combinação não segurável (objecto com `detail`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErroValidacao"
+                  - $ref: "#/components/schemas/ErroDetalhe"
+              examples:
+                validacao:
+                  summary: Campos inválidos
+                  value:
+                    tipo_mutuario:
+                      - "Valor inválido. Use um de: TRABALHADORES, MUTUARIOS, MILITARES."
+                    montante_emprestimo:
+                      - "Um número válido é necessário."
+                    data_nascimento:
+                      - "Formato inválido para data. Use um dos formatos a seguir: YYYY-MM-DD."
+                    prazo_emprestimo:
+                      - "Certifique-se de que este valor seja inferior ou igual a 7."
+                nao_seguravel:
+                  summary: Idade × prazo sem taxa na tarifa
+                  value:
+                    detail: "Não segurável: idade 67 com prazo de 7 anos (TRABALHADORES)."
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+  /processes/tarif:
+    get:
+      tags: [Processes]
+      operationId: obterTarifa
+      summary: Devolve a tabela de tarifas
+      description: |
+        Taxas em permilagem (‰) por idade (18–70) e prazo em anos (1–7).
+
+        As combinações não seguráveis vêm a `null` em vez de omitidas, para a
+        grelha ficar rectangular e poder ser renderizada como tabela
+        directamente.
+
+        Atenção: a rota **não tem barra final**. `/processes/tarif/` devolve 404.
+      parameters:
+        - name: tipo_mutuario
+          in: query
+          required: false
+          description: |
+            Perfil a devolver. Omitido, devolve os três.
+            Aceita minúsculas e acentos (`Mutuários` → `MUTUARIOS`).
+          schema:
+            $ref: "#/components/schemas/TipoMutuario"
+          example: TRABALHADORES
+      responses:
+        "200":
+          description: Tabela de tarifas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TarifaResponse"
+              example:
+                tipos_mutuario: [TRABALHADORES]
+                idade_min: 18
+                idade_max: 70
+                prazos: [1, 2, 3, 4, 5, 6, 7]
+                tarifas:
+                  - tipo_mutuario: TRABALHADORES
+                    idade: 18
+                    taxas:
+                      "1": 3.685402
+                      "2": 7.114062
+                      "3": 10.259172
+                      "4": 13.077362
+                      "5": 15.622632
+                      "6": 17.933739
+                      "7": 20.045566
+                  - tipo_mutuario: TRABALHADORES
+                    idade: 67
+                    taxas:
+                      "1": 29.777084
+                      "2": 59.806923
+                      "3": 93.124529
+                      "4": 130.097452
+                      "5": 171.124289
+                      "6": 216.64395
+                      "7": null
+        "400":
+          description: "`tipo_mutuario` inválido"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErroDetalhe"
+              example:
+                detail: "tipo_mutuario inválido. Use um de: TRABALHADORES, MUTUARIOS, MILITARES."
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+  /processes/simulate-offline/:
+    post:
+      tags: [Processes]
+      operationId: registarVendaOffline
+      summary: Regista uma venda fechada ao balcão
+      description: |
+        **Stub.** Não valida o risco, não calcula prémio e não decide nada:
+        guarda o pedido e responde sempre aprovado. Quem emite a apólice é o
+        RPA INSIS, a jusante.
+
+        A resposta é constante, tirando `id_bci`, que é devolvido tal como veio
+        no pedido. Sem `id_bci` no pedido, vem string vazia.
+
+        Qualquer corpo JSON é aceite, incluindo vazio. Não há campos
+        obrigatórios, e valores fora dos limites da tarifa (por exemplo
+        `prazo_emprestimo: 12`) não são rejeitados, porque não há cálculo.
+        Tudo o que o canal enviar é guardado tal como veio.
+
+        Quando o pedido traz `transaction_ref`, é idempotente: repetir não cria
+        um segundo registo. A resposta é a mesma nos dois casos.
+
+        A rota responde **com e sem** barra final.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegistoOfflineRequest"
+            example:
+              id_bci: "EMOSETESTE0063"
+              transaction_ref: "TRX-2026-000841"
+              tipo_mutuario: "trabalhador"
+              montante_emprestimo: 1e+06
+              data_nascimento: "1995-01-21"
+              prazo_emprestimo: 12
+              agravamento: 0
+              nuit: "125454958"
+              nome_cliente: "Raimundo L. Timba"
+              apelido: "Timba"
+              tipo_entidade: "person"
+              sexo: "M"
+              pais: "Moçambique"
+              nacionalidade: "MZ"
+              lingua: "PORTUGUESE"
+              tipo_morada: "Casa"
+              provincia: "Maputo Cidade"
+              regiao: "Distrito Municipal de KaMpfumo"
+              bairro: "Polana Cimento A"
+              morada: "Av. Julius Nyerere 123"
+              tipo_contacto: "Mobile"
+              numero_contacto: "847527898"
+              lingua_contacto: "Portugues"
+              codigo_banco: "0008"
+              numero_conta: "123456789012"
+              tipo_moeda: "MZN"
+              tipo_seguro: "vida"
+              canal_venda: "balcao"
+              data_emissao: "2026-01-18"
+              data_apolice: "2026-01-18"
+              data_inicio_seguro: "2026-01-18"
+              papel: "tomador"
+              quota: 100
+              estado: "activo"
+              designacao: "Seguro Vida Credito Consumo"
+              lingua_apolice: "Portugues"
+              tipo_pagamento: "debito_conta"
+              num_prestacoes: 1
+              man_id: "6000035452"
+              tipo_segurado: "principal"
+              capital_seguro: 1e+06
+              premio_pago: 11844
+              comissao: 2426.57
+              certificado_apolice: "JVBERi0xLjQKJeLjz9MK..."
+              altura_cm: 175
+              peso_kg: 70
+              fuma: "Sim"
+              fuma_anos_cigarros: "12 anos, 5 por dia"
+              bebe_bebidas_alcoolicas: "Sim"
+              bebe_frequencia: "Ao fim-de-semana"
+              pratica_desporto: "Nao"
+              tipo_desporto: ""
+              toma_drogas_medicamentos: "Nao"
+              tipo_tempo_medicamentos: ""
+              af_diabetes: "Sim"
+              af_colesterol_alto: "Nao"
+              af_doencas_cardiacas: "Nao"
+              af_avc: "Sim"
+              af_hipertensao: "Nao"
+              af_doenca_neurologica_mental: "Nao"
+              af_cancro: "Nao"
+              af_retinite_pigmentosa: "Nao"
+              af_porfiria: "Nao"
+              af_hemofilia: "Nao"
+              af_outra_doenca_hereditaria: "Nao"
+              af_morte_familiar_menos_65: "Nao"
+              ap_tratamento_cirurgico: "Sim"
+              ap_tratamento_cirurgico_especifique: "Apendicectomia em 2019"
+              ap_diagnostico_5anos: "Nao"
+              ap_diagnostico_5anos_descreva: ""
+              ap_febre_reumatica_coracao: "Nao"
+              ap_pressao_arterial_avc: "Nao"
+              ap_doenca_pulmonar: "Nao"
+              ap_sistema_digestivo: "Nao"
+              ap_condicoes_rins: "Nao"
+              ap_ansiedade_depressao: "Sim"
+              ap_diabetes_glandular: "Nao"
+              ap_articulacoes_coluna: "Nao"
+              ap_tumores: "Nao"
+              ap_doencas_sangue: "Nao"
+              ap_hiv: "Nao"
+              ap_hiv_indique: ""
+              ap_doenca_sexual: "Nao"
+              ap_deficiencia: "Nao"
+              ap_circunstancias_risco: "Nao"
+              ap_outra_doenca: "Nao"
+              ap_outra_doenca_mencione: ""
+              sf_esta_gravida: "Nao"
+              sf_gravida_meses: ""
+              sf_esteve_gravida: "Nao"
+              sf_esteve_gravida_detalhes: ""
+              sf_tipo_partos: ""
+              sf_numero_partos_anos: ""
+              sf_aborto_prematuro: "Nao"
+              sf_aborto_meses: ""
+              sf_doenca_ginecologica: "Nao"
+              sf_doenca_ginecologica_mencione: ""
+      responses:
+        "200":
+          description: Pedido aceite e guardado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistoOfflineResponse"
+              example:
+                message: "Cotação aprovada. RPA INSIS iniciado para emissão de apólice."
+                id_bci: "EMOSETESTE0063"
+                estado_processo: "aprovado"
+        "401":
+          $ref: "#/components/responses/NaoAutenticado"
+
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Token do Django REST Framework (`rest_framework.authtoken`).
+        O valor do header inclui o prefixo `Token`:
+
+        ```
+        Authorization: Token c183b8795ebcb774bdc2491d28286bdcb3f4bec1
+        ```
+
+        Os tokens vivem na tabela `authtoken_token` da base de dados. Um token
+        por utilizador. Emitir com
+        `python manage.py drf_create_token <username>`.
+
+  responses:
+    NaoAutenticado:
+      description: Header `Authorization` ausente ou token inválido
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErroDetalhe"
+          example:
+            detail: "As credenciais de autenticação não foram fornecidas."
+
+  schemas:
+    TipoMutuario:
+      type: string
+      description: |
+        Perfil do mutuário, que determina a tabela de taxas a usar.
+        Normalizado antes de ser validado: maiúsculas e minúsculas são
+        equivalentes e os acentos são removidos.
+      enum: [TRABALHADORES, MUTUARIOS, MILITARES]
+
+    SimulacaoRequest:
+      type: object
+      required:
+        [tipo_mutuario, montante_emprestimo, data_nascimento, prazo_emprestimo]
+      properties:
+        tipo_mutuario:
+          $ref: "#/components/schemas/TipoMutuario"
+        montante_emprestimo:
+          type: number
+          format: double
+          description: Capital do empréstimo. Máximo 16 dígitos, 2 casas decimais.
+          minimum: 0.01
+          example: 1000000
+        data_nascimento:
+          type: string
+          format: date
+          description: |
+            Só o formato `YYYY-MM-DD` é aceite. Tem de ser no passado, e a idade
+            no aniversário mais próximo tem de cair entre 18 e 70 anos.
+          example: "1996-01-01"
+        prazo_emprestimo:
+          type: integer
+          description: Duração do empréstimo em anos.
+          minimum: 1
+          maximum: 7
+          example: 5
+
+    SimulacaoResponse:
+      type: object
+      required:
+        [
+          montante_emprestimo,
+          premio_total,
+          premio_simples,
+          sobre_taxa,
+          selo,
+          comissao_bci,
+          taxa,
+        ]
+      properties:
+        montante_emprestimo:
+          type: number
+          format: double
+          description: Eco do capital recebido no pedido.
+        premio_total:
+          type: number
+          format: double
+          description: >-
+            `montante × taxa / 1000 × (1 + agravamento)`.
+            Igual a prémio simples + sobretaxa + selo.
+        premio_simples:
+          type: number
+          format: double
+          description: "`prémio total / 1,025`."
+        sobre_taxa:
+          type: number
+          format: double
+          description: 1,5 % do prémio simples.
+        selo:
+          type: number
+          format: double
+          description: 1 % do prémio simples (imposto de selo).
+        comissao_bci:
+          type: number
+          format: double
+          description: 21 % do prémio simples. Não entra no prémio total.
+        taxa:
+          type: number
+          format: double
+          description: |
+            Taxa da tarifa em permilagem (‰) usada no cálculo, para se poder
+            conferir o resultado: `premio_total = montante × taxa / 1000`
+            (com agravamento 0).
+
+    TarifaResponse:
+      type: object
+      required: [tipos_mutuario, idade_min, idade_max, prazos, tarifas]
+      properties:
+        tipos_mutuario:
+          type: array
+          description: Perfis presentes em `tarifas`, pela ordem em que aparecem.
+          items:
+            $ref: "#/components/schemas/TipoMutuario"
+        idade_min:
+          type: integer
+          example: 18
+        idade_max:
+          type: integer
+          example: 70
+        prazos:
+          type: array
+          description: Prazos que formam as colunas de `taxas`.
+          items:
+            type: integer
+          example: [1, 2, 3, 4, 5, 6, 7]
+        tarifas:
+          type: array
+          description: |
+            Uma linha por perfil × idade: 53 linhas por perfil (idades 18 a 70),
+            159 quando `tipo_mutuario` é omitido.
+          items:
+            $ref: "#/components/schemas/LinhaTarifa"
+
+    LinhaTarifa:
+      type: object
+      required: [tipo_mutuario, idade, taxas]
+      properties:
+        tipo_mutuario:
+          $ref: "#/components/schemas/TipoMutuario"
+        idade:
+          type: integer
+          example: 18
+        taxas:
+          type: object
+          description: |
+            Taxa em ‰ por prazo. A chave é o prazo em anos, como string
+            (`"1"` a `"7"`). O valor é `null` quando a combinação idade × prazo
+            não é segurável.
+          additionalProperties:
+            type: number
+            format: double
+            nullable: true
+
+    ErroDetalhe:
+      type: object
+      required: [detail]
+      properties:
+        detail:
+          type: string
+
+    ErroValidacao:
+      type: object
+      description: |
+        Uma entrada por campo inválido, com a lista de mensagens.
+
+        As mensagens genéricas do Django REST Framework seguem o
+        `LANGUAGE_CODE` do projecto, que em `config/settings.py` é `pt` — os
+        exemplos são os dessa configuração. Noutra instalação com outro
+        `LANGUAGE_CODE` o texto muda, pelo que os clientes devem decidir pela
+        chave do campo e não pela mensagem. As mensagens escritas nesta app
+        (perfil inválido, não segurável) estão sempre em português.
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    RegistoOfflineRequest:
+      type: object
+      description: |
+        Objecto livre: nenhum campo é obrigatório e nenhum é validado. As
+        propriedades abaixo são as 97 que o canal envia numa venda ao balcão.
+        Cinco delas ficam em colunas próprias do registo — `id_bci`,
+        `transaction_ref`, `premio_pago`, `comissao` e `certificado_apolice`;
+        as restantes ficam no JSON `dados`, tal como vieram. Campos a mais são
+        aceites e guardados na mesma.
+
+        As respostas do questionário clínico chegam como texto (`Sim` / `Nao`,
+        com e sem maiúsculas) e não são normalizadas. Os campos `sf_*` só vêm
+        preenchidos quando `sexo` é `F`.
+      additionalProperties: true
+      properties:
+        # --- Identificação do processo
+        id_bci:
+          type: string
+          maxLength: 64
+          description: "Identificador do processo no BCI. Único campo que influencia a resposta - é devolvido tal e qual. Guardado em coluna própria, truncado a 64 caracteres."
+        transaction_ref:
+          type: string
+          maxLength: 100
+          description: "Referência da transacção no sistema de origem. Coluna própria e chave de idempotência: repetir a mesma referência não cria um segundo registo."
+        # --- Empréstimo (eco da cotação)
+        tipo_mutuario:
+          type: string
+          description: "Perfil usado na cotação. Guardado tal como vem - aqui não é normalizado nem validado contra a lista."
+        montante_emprestimo:
+          type: number
+          format: double
+          description: "Capital do empréstimo."
+        data_nascimento:
+          type: string
+          format: date
+          description: "`YYYY-MM-DD`. Não é validada nem usada para calcular idade."
+        prazo_emprestimo:
+          type: integer
+          description: "Prazo em anos. Valores fora de 1–7 passam, porque não há cálculo."
+        agravamento:
+          type: number
+          format: double
+          description: "Agravamento aplicado na cotação (`0.10` = 10 %)."
+        # --- Cliente
+        nuit:
+          type: string
+          description: "NUIT do cliente."
+        nome_cliente:
+          type: string
+          description: "Nome próprio."
+        apelido:
+          type: string
+          description: "Apelido."
+        tipo_entidade:
+          type: string
+          description: "Natureza do tomador; `person` para pessoa singular."
+        sexo:
+          type: string
+          description: "`M` ou `F`. Determina se o bloco `sf_*` vem preenchido."
+        pais:
+          type: string
+          description: "País de residência."
+        nacionalidade:
+          type: string
+          description: "Código ISO do país, `MZ`."
+        lingua:
+          type: string
+          description: "Língua do cliente, `PORTUGUESE`."
+        # --- Morada
+        tipo_morada:
+          type: string
+          description: "`Casa`, `Trabalho`, etc."
+        provincia:
+          type: string
+          description: "Província."
+        regiao:
+          type: string
+          description: "Distrito ou distrito municipal."
+        bairro:
+          type: string
+          description: "Bairro."
+        morada:
+          type: string
+          description: "Avenida ou rua e número."
+        # --- Contacto
+        tipo_contacto:
+          type: string
+          description: "`Mobile`, `Email`, etc."
+        numero_contacto:
+          type: string
+          description: "Número ou endereço, conforme o tipo."
+        lingua_contacto:
+          type: string
+          description: "Língua preferida nas comunicações."
+        # --- Dados bancários
+        codigo_banco:
+          type: string
+          description: "Código do banco; `0008` para o BCI."
+        numero_conta:
+          type: string
+          description: "Número da conta de débito."
+        tipo_moeda:
+          type: string
+          description: "`MZN`."
+        # --- Apólice
+        tipo_seguro:
+          type: string
+          description: "`vida`."
+        canal_venda:
+          type: string
+          description: "`balcao` para a venda fechada ao balcão."
+        data_emissao:
+          type: string
+          format: date
+          description: "Data de emissão do certificado."
+        data_apolice:
+          type: string
+          format: date
+          description: "Data da apólice."
+        data_inicio_seguro:
+          type: string
+          format: date
+          description: "Início da cobertura."
+        papel:
+          type: string
+          description: "Papel do cliente no contrato, `tomador`."
+        quota:
+          type: number
+          format: double
+          description: "Percentagem do capital atribuída a este segurado."
+        estado:
+          type: string
+          description: "Estado do contrato na origem, `activo`."
+        designacao:
+          type: string
+          description: "Designação comercial do produto. Texto livre do canal."
+        lingua_apolice:
+          type: string
+          description: "Língua em que a apólice é emitida."
+        tipo_pagamento:
+          type: string
+          description: "`debito_conta`."
+        num_prestacoes:
+          type: integer
+          description: "Número de prestações do prémio."
+        man_id:
+          type: string
+          description: "Identificador do mandato no sistema de origem."
+        tipo_segurado:
+          type: string
+          description: "`principal` ou segurado secundário."
+        capital_seguro:
+          type: number
+          format: double
+          description: "Capital seguro. Em regra igual a `montante_emprestimo`."
+        premio_pago:
+          type: number
+          format: double
+          description: "Prémio cobrado ao cliente. Coluna própria, guardado sem conferência - valor não numérico fica a `null`, não dá erro."
+        comissao:
+          type: number
+          format: double
+          description: "Comissão praticada. Coluna própria, mesmas regras."
+        certificado_apolice:
+          type: string
+          format: byte
+          description: "Certificado de apólice em base64. Coluna própria - é retirado de `dados` e não é descodificado nem verificado."
+        # --- Questionário clínico — hábitos
+        altura_cm:
+          type: integer
+          description: "Altura em centímetros."
+        peso_kg:
+          type: number
+          format: double
+          description: "Peso em quilogramas."
+        fuma:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        fuma_anos_cigarros:
+          type: string
+          description: "Há quantos anos e quantos cigarros por dia. Só vem preenchido se `fuma` for `Sim`."
+        bebe_bebidas_alcoolicas:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        bebe_frequencia:
+          type: string
+          description: "Frequência e quantidade. Condicional ao campo anterior."
+        pratica_desporto:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        tipo_desporto:
+          type: string
+          description: "Que desporto e com que regularidade. Condicional."
+        toma_drogas_medicamentos:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        tipo_tempo_medicamentos:
+          type: string
+          description: "Quais e há quanto tempo. Condicional."
+        # --- Antecedentes familiares (af_*)
+        af_diabetes:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_colesterol_alto:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_doencas_cardiacas:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_avc:
+          type: string
+          description: "Acidente vascular cerebral na família. Resposta do questionário: `Sim` / `Nao`."
+        af_hipertensao:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_doenca_neurologica_mental:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_cancro:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_retinite_pigmentosa:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_porfiria:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_hemofilia:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_outra_doenca_hereditaria:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        af_morte_familiar_menos_65:
+          type: string
+          description: "Morte de familiar directo antes dos 65 anos. Resposta do questionário: `Sim` / `Nao`."
+        # --- Antecedentes pessoais (ap_*)
+        ap_tratamento_cirurgico:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_tratamento_cirurgico_especifique:
+          type: string
+          description: "Qual. Condicional ao campo anterior."
+        ap_diagnostico_5anos:
+          type: string
+          description: "Diagnóstico nos últimos 5 anos. Resposta do questionário: `Sim` / `Nao`."
+        ap_diagnostico_5anos_descreva:
+          type: string
+          description: "Qual. Condicional."
+        ap_febre_reumatica_coracao:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_pressao_arterial_avc:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_doenca_pulmonar:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_sistema_digestivo:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_condicoes_rins:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_ansiedade_depressao:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_diabetes_glandular:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_articulacoes_coluna:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_tumores:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_doencas_sangue:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_hiv:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_hiv_indique:
+          type: string
+          description: "Detalhe. Condicional a `ap_hiv`."
+        ap_doenca_sexual:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_deficiencia:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_circunstancias_risco:
+          type: string
+          description: "Profissão ou actividade de risco. Resposta do questionário: `Sim` / `Nao`."
+        ap_outra_doenca:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        ap_outra_doenca_mencione:
+          type: string
+          description: "Qual. Condicional."
+        # --- Saúde feminina (sf_*)
+        sf_esta_gravida:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        sf_gravida_meses:
+          type: string
+          description: "De quantos meses. Condicional."
+        sf_esteve_gravida:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        sf_esteve_gravida_detalhes:
+          type: string
+          description: "Detalhes. Condicional."
+        sf_tipo_partos:
+          type: string
+          description: "Tipo de partos."
+        sf_numero_partos_anos:
+          type: string
+          description: "Número de partos e em que anos."
+        sf_aborto_prematuro:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        sf_aborto_meses:
+          type: string
+          description: "Com quantos meses. Condicional."
+        sf_doenca_ginecologica:
+          type: string
+          description: "Resposta do questionário: `Sim` / `Nao`."
+        sf_doenca_ginecologica_mencione:
+          type: string
+          description: "Qual. Condicional."
+
+    RegistoOfflineResponse:
+      type: object
+      required: [message, id_bci, estado_processo]
+      properties:
+        message:
+          type: string
+          description: Texto fixo.
+          enum: ["Cotação aprovada. RPA INSIS iniciado para emissão de apólice."]
+        id_bci:
+          type: string
+          description: O `id_bci` do pedido, devolvido tal e qual. Vazio se não vier.
+        estado_processo:
+          type: string
+          enum: [aprovado]
